@@ -23,9 +23,28 @@ No installs, no build step — it’s pure front-end.
 
 ## Screenshots
 
+Here’s the game in action:
+
+![Clock Math Question](zero-state.png)
+![Wrong Answer Example](incorrect-state.png)
+![Correct Answer Example](correct-state.png)
+
 
 ## Play Online
 This project works with **GitHub Pages**.  
-Once Pages is enabled, the game will be live at:
+Once Pages is enabled, the game will be live at: https://jenpal.github.io/clock-math-game/
+
+## 🧩 Learning Connection
+This game introduces the idea of **modular arithmetic** in a kid-friendly way:  
+- Clocks wrap around after 12, just like numbers wrap around in mod 12.  
+- Great for math learners who benefit from visual, interactive practice.
+
+## ✨ Credits
+Created by [Jennifer Pallister](https://www.linkedin.com/in/jennifer-pallister/)  
+— AI applications & educational content specialist, parent, and occasional maker of games to entertain a math-curious kid.
+
+---
+
+💡 *Fork it, remix it, or use it as a starter template for your own math games.*
 
 
