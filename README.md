@@ -32,7 +32,7 @@ Here’s the game in action:
 
 ## Play Online
 This project works with **GitHub Pages**.  
-Once Pages is enabled, the game will be live at: https://jenpal.github.io/clock-math-game/
+Once Pages is enabled, the game will be live at: [https://jenpal.github.io/clock-math-game/](https://jenpal.github.io/clock-math-game/)
 
 ## 🧩 Learning Connection
 This game introduces the idea of **modular arithmetic** in a kid-friendly way:  
