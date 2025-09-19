@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Clock Math</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --bg:#f6f8fb; --ink:#0b1020; --accent:#2e7d32; --muted:#9aa3af; --wrong:#b91c1c; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--ink); display: grid; place-items: center; min-height: 100vh; margin: 0; }
+    .wrap { text-align: center; padding: 20px; }
+    h1 { margin: 0 0 8px; font-size: 1.6rem; }
+    #question { font-size: 1.2rem; margin: 6px 0 12px; }
+    #status { min-height: 24px; font-weight: 600; margin-bottom: 8px; }
+    .ok { color: var(--accent); }
+    .no { color: var(--wrong); }
+    canvas { background: #fff; border-radius: 50%; box-shadow: 0 12px 30px rgba(0,0,0,0.08); cursor: pointer; touch-action: manipulation; }
+    .row { margin-top: 10px; display: flex; gap: 10px; justify-content: center; }
+    button { padding: 8px 12px; border: 0; border-radius: 10px; font-weight: 600; cursor: pointer; }
+    .primary { background: var(--accent); color: #fff; }
+    .ghost { background: #e5e7eb; color: #111827; }
+    .hint { color: var(--muted); font-size: .9rem; margin-top: 10px; }
+    .disabled { opacity: .6; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🕒 Clock Math</h1>
+    <div id="question"></div>
+    <div id="status" aria-live="polite"></div>
+    <canvas id="clock" width="320" height="320" title="Click the correct hour"></canvas>
+    <div class="row">
+      <button id="reset" class="ghost" type="button">Reset</button>
+      <button id="next" class="primary" type="button">New Question</button>
+    </div>
+    <div class="hint">Tip: click the number for your answer. Hand always moves clockwise.</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('clock');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height, CX = W/2, CY = H/2, R = 140;
+
+    const questionDiv = document.getElementById('question');
+    const statusDiv   = document.getElementById('status');
+    const nextBtn     = document.getElementById('next');
+    const resetBtn    = document.getElementById('reset');
+
+    let startHour, addHours, answerHour; // 0..11 (0 means 12)
+    let showingHour = 0;                 // can be fractional for animation
+    let isAnimating = false, rafId = null;
+
+    const mod12ToDisplay = i => (i === 0 ? 12 : i);
+    const randInt = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+
+    function setDisabled(disabled){
+      [nextBtn, resetBtn, canvas].forEach(el => el.classList.toggle('disabled', disabled));
+    }
+
+    function newQuestion(){
+      cancelAnimationFrame(rafId); isAnimating = false;
+      startHour  = randInt(0,11);
+      addHours   = randInt(1,11);
+      answerHour = (startHour + addHours) % 12;
+      showingHour = startHour;
+      statusDiv.textContent = ''; statusDiv.className = '';
+      questionDiv.textContent = `It's ${mod12ToDisplay(startHour)}:00. What time will it be in ${addHours} hour${addHours===1?'':'s'}?`;
+      draw();
+    }
+
+    function resetHand(){
+      cancelAnimationFrame(rafId); isAnimating = false;
+      showingHour = startHour; statusDiv.textContent=''; statusDiv.className='';
+      draw();
+    }
+
+    function drawClockFace(){
+      ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI*2);
+      ctx.fillStyle='#fff'; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='#d1d5db'; ctx.stroke();
+      for(let i=0;i<60;i++){
+        const len = (i%5===0)?10:5;
+        const ang = -Math.PI/2 + i*(Math.PI/30);
+        const x1 = CX + Math.cos(ang)*(R-14), y1 = CY + Math.sin(ang)*(R-14);
+        const x2 = CX + Math.cos(ang)*(R-14-len), y2 = CY + Math.sin(ang)*(R-14-len);
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+        ctx.lineWidth = (i%5===0)?2:1; ctx.strokeStyle='#9aa3af'; ctx.stroke();
+      }
+      ctx.fillStyle='#0b1020'; ctx.font='16px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      for(let i=1;i<=12;i++){
+        const ang = -Math.PI/2 + i*(Math.PI/6);
+        const x = CX + Math.cos(ang)*(R-32), y = CY + Math.sin(ang)*(R-32);
+        ctx.fillText(i, x, y);
+      }
+    }
+
+    function drawHourHand(hour){
+      const ang = -Math.PI/2 + hour*(Math.PI/6);
+      const len = R-55;
+      const x2 = CX + Math.cos(ang)*len, y2 = CY + Math.sin(ang)*len;
+      ctx.beginPath(); ctx.lineWidth=6; ctx.lineCap='round'; ctx.strokeStyle='#2e7d32';
+      ctx.moveTo(CX, CY); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(CX, CY, 5, 0, Math.PI*2); ctx.fillStyle='#2e7d32'; ctx.fill();
+    }
+
+    function draw(){ ctx.clearRect(0,0,W,H); drawClockFace(); drawHourHand(((showingHour%12)+12)%12); }
+
+    // >>> Fixed: click maps to correct hour (handles zoom/retina)
+    function clickToHourIndex(evt){
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width  / rect.width;
+      const scaleY = canvas.height / rect.height;
+
+      const x = (evt.clientX - rect.left) * scaleX - CX;
+      const y = (evt.clientY - rect.top)  * scaleY - CY;
+
+      // angle from 12 o'clock, increasing clockwise:
+      // theta = atan2(x, -y). Normalize to [0, 2π).
+      let theta = Math.atan2(x, -y);
+      if (theta < 0) theta += Math.PI*2;
+
+      const idx = Math.round(theta / (Math.PI/6)) % 12; // 0..11
+      return idx;
+    }
+
+    function animateClockwiseTo(targetIdx, durationMs=600){
+      if (isAnimating) return;
+      isAnimating = true; setDisabled(true);
+
+      const start = ((showingHour%12)+12)%12;
+      let steps = (targetIdx - start + 12) % 12; // clockwise distance
+      if (steps === 0) steps = 12;               // full lap if same index
+
+      const t0 = performance.now();
+      const ease = t => t<0.5 ? 2*t*t : -1+(4-2*t)*t;
+
+      function tick(now){
+        const t = Math.min(1, (now - t0)/durationMs);
+        showingHour = (start + ease(t)*steps) % 12;
+        draw();
+        if (t < 1) rafId = requestAnimationFrame(tick);
+        else { showingHour = targetIdx; draw(); isAnimating=false; setDisabled(false); }
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+
+    canvas.addEventListener('click', e=>{
+      if (isAnimating) return;
+      const clickedIdx = clickToHourIndex(e);
+      if (clickedIdx === answerHour){
+        statusDiv.textContent='✅ Correct!'; statusDiv.className='ok';
+        animateClockwiseTo(answerHour);
+        setTimeout(()=>{ if(!isAnimating) newQuestion(); }, 900);
+      } else {
+        statusDiv.textContent='❌ Try again'; statusDiv.className='no';
+        animateClockwiseTo(clickedIdx, 350);
+      }
+    });
+
+    nextBtn.addEventListener('click', ()=>{ if(!isAnimating) newQuestion(); });
+    resetBtn.addEventListener('click', ()=>{ if(!isAnimating) resetHand(); });
+
+    newQuestion();
+  </script>
+</body>
+</html>
